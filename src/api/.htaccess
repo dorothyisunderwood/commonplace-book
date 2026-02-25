@@ -1,0 +1,53 @@
+# Commonplace Book API — Apache configuration
+# Place this in your api/ directory on DreamHost
+
+Options -Indexes
+Options -MultiViews
+
+# ── Route everything to index.php ────────────────────────────────────────────
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# ── Security headers ─────────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+  # Prevent MIME sniffing
+  Header always set X-Content-Type-Options "nosniff"
+  # Prevent clickjacking
+  Header always set X-Frame-Options "DENY"
+  # Strict transport (HTTPS only, 1 year)
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  # No referrer leak
+  Header always set Referrer-Policy "no-referrer"
+</IfModule>
+
+# ── PHP hardening ─────────────────────────────────────────────────────────────
+<IfModule mod_php.c>
+  # Never expose PHP version in headers
+  php_flag expose_php Off
+  # Turn off error display (errors go to log, never to client)
+  php_flag display_errors Off
+  php_flag log_errors On
+</IfModule>
+
+# ── Deny access to config files ───────────────────────────────────────────────
+<FilesMatch "^(config|setup)\.php$">
+  Order Allow,Deny
+  Deny from all
+</FilesMatch>
+
+# ── Rate limiting (basic — requires mod_ratelimit on DreamHost) ───────────────
+# DreamHost shared hosting may not have mod_ratelimit.
+# This is a belt-and-suspenders measure; the HMAC + bcrypt are the real defence.
+<IfModule mod_ratelimit.c>
+  <Location "/api/">
+    SetOutputFilter RATE_LIMIT
+    SetEnv rate-limit 400
+  </Location>
+</IfModule>
+
+# ── Block common scanners ─────────────────────────────────────────────────────
+<IfModule mod_rewrite.c>
+  RewriteCond %{HTTP_USER_AGENT} (sqlmap|nikto|nessus|masscan|zgrab) [NC]
+  RewriteRule .* - [F,L]
+</IfModule>
