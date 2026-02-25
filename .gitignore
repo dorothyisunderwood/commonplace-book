@@ -34,3 +34,6 @@ api/config.php
 
 # My notes
 202602notes.txt
+
+# PHP config with secrets - never commit
+api/config.php
